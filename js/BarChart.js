@@ -6,6 +6,7 @@ class BarChart {
             containerHeight: _config.containerHeight || 140,
             margin: _config.margin || { top: 10, right: 5, bottom: 50, left: 5 }
         };
+
         this.data = _data;
         this.initVis();
     }
