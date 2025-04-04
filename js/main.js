@@ -1,3 +1,6 @@
+let geoData, outageData, barChart, choroplethMap;
+const dispatcher = d3.dispatch('selectCounty');
+
 Promise.all([
   d3.json("../data/geometry_data.geojson"),
   d3.csv("../data/aggreted_power_outages_complete_no_pr.csv"),
@@ -5,18 +8,41 @@ Promise.all([
   d3.csv("../data/pops_2019_2023_county.csv"),
 ])
   .then((data) => {
-    const geoData = data[0];
-    const outageData = data[1];
+    geoData = data[0];
+    outageData = data[1];
     const cartogramData = data[2];
     const popData = data[3];
 
+    // ==========================================
+    // Bar chart
+    // ==========================================
     outageData.forEach((d) => {
+      d.fips_code = +d.fips_code;
       d.year = +d.year;
       d.month = +d.month;
       d.outage_count = +d.outage_count;
     });
+    
+    // Collect outage data by fips_code
+    let outageMap = {};
+    outageData.forEach((d) => {
+      if (d.fips_code in outageMap === false) {
+        outageMap[d.fips_code] = [];
+      }
 
+      outageMap[d.fips_code].push({
+        date: `${d.year}-${String(d.month).padStart(2, "0")}`,
+        outage_count: +d.outage_count,
+        total_customers_out: +d.total_customers_out,
+      });
+    });
 
+    barChart = new BarChart({ parentElement: "#chart" }, outageData, dispatcher);
+    barChart.updateVis();
+
+    // ==========================================
+    // Choropleth Map
+    // ==========================================
     const popLookup = new Map(popData.map(d => {
       return [+d.fips_code, {
         pop_2019: +d.pop_2019,
@@ -33,25 +59,13 @@ Promise.all([
       (d) => d.properties.state !== "Puerto Rico"
     );
 
-    // Collect outage data by fips_code
-    let outageMap = {};
-    outageData.forEach((d) => {
-      if (d.fips_code in outageMap === false) {
-        outageMap[d.fips_code] = [];
-      }
-
-      outageMap[d.fips_code].push({
-        date: `${d.year}-${String(d.month).padStart(2, "0")}`,
-        outage_count: +d.outage_count,
-        total_customers_out: +d.total_customers_out,
-      });
-    });
-
     features.forEach((d) => {
       d.properties.fips_code = +d.properties.fips_code;
-      const outage_data = outageMap[d.properties.fips_code];
+      d.properties.selected = false;
 
+      const outage_data = outageMap[d.properties.fips_code];
       d.properties.outage_data = outage_data;
+      
       d.properties.sum_outage_count = outage_data.reduce((acc, d) => {
         return d ? acc + d.outage_count : acc;
       }, 0);
@@ -60,22 +74,16 @@ Promise.all([
       }, 0);
 
       const pops = popLookup.get(d.properties.fips_code);
-
       Object.assign(d.properties, pops);
     });
 
     geoData.features = features;
 
-    const barChart = new BarChart(
-      {
-        parentElement: "#chart",
-      },
-      outageData
-    );
+    choroplethMap = new ChoroplethMap({ parentElement: "#map" }, geoData, dispatcher);
 
-    barChart.updateVis();
-    const choroplethMap = new ChoroplethMap({ parentElement: "#map" }, geoData);
-
+    // ==========================================
+    // Cartogram
+    // ==========================================
     // prepare cartogram + piechart data:
     cartogramData.forEach((d) => {
       d.x = +d.x;
@@ -123,3 +131,10 @@ Promise.all([
     );
   })
   .catch((e) => console.error(e));
+
+dispatcher.on('selectCounty', selectedFips => {
+  choroplethMap.updateVis();
+
+  barChart.selectedFips = selectedFips;
+  barChart.updateVis();
+})

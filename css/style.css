@@ -3,12 +3,41 @@ body {
     padding: 20px 40px;
 }
 
-.county:hover {
-    stroke: #909090;
+#map {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    width: 1250px;
+    gap: 0.5rem;
 }
 
-#map {
+#map svg {
     background: slategray;
+}
+
+#map #buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.1rem;
+    height: 600px;
+}
+
+#buttons .button {
+    border: 1px solid #ccc;
+    background-color: #f8f8f8;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    text-align: center;
+    cursor: pointer;
+}
+
+#buttons .button:hover {
+    background-color: #e0e0e0;
+    border-color: #aaa;
+}
+
+#buttons .button.reset-button {
+    background-color: #d3d3d3;
+    font-weight: bold;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 #tooltip {
@@ -35,4 +64,25 @@ body {
 
 .legend-label {
     font-size: .7rem;
+}
+
+.county {
+    transition: stroke 0.2s ease;
+    stroke: black;
+    stroke-opacity: 0;
+}
+
+.county:hover,
+.county-selected,
+.county-selected:hover  {
+    stroke-opacity: 1;
+}
+
+.county:hover {
+    stroke: #909090;
+    cursor: pointer;
+}
+
+.county-selected:hover  {
+    stroke: black;
 }
