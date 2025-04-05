@@ -2,12 +2,12 @@ class ChoroplethMap {
   constructor(_config, _data, _dispatcher) {
     this.config = {
       parentElement: _config.parentElement,
-      containerWidth: _config.containerWidth || 800,
+      containerWidth: _config.containerWidth || 1250,
       containerHeight: _config.containerHeight || 600,
       margin: _config.margin || { top: 10, right: 10, bottom: 10, left: 10 },
       tooltipPadding: 10,
       legendBottom: 10,
-      legendLeft: 10,
+      legendRight: 10,
       legendRectHeight: 12,
       legendRectWidth: 150,
       colourDark: '#0e1031',
@@ -16,6 +16,7 @@ class ChoroplethMap {
     this.data = _data;
     this.dispatcher = _dispatcher;
     this.selectedFips = new Set();
+    this.selectByCounty = true;
 
     this.initVis();
   }
@@ -34,7 +35,7 @@ class ChoroplethMap {
       vis.config.margin.bottom;
 
     // Define SVG drawing area
-    vis.svg = d3.select(vis.config.parentElement).insert('svg', '#buttons')
+    vis.svg = d3.select(vis.config.parentElement).append('svg')
       .attr('width', vis.config.containerWidth)
       .attr('height', vis.config.containerHeight);
 
@@ -45,7 +46,7 @@ class ChoroplethMap {
     );
 
     // Initialize projection and path generator
-    vis.projection = d3.geoAlbersUsa()
+    vis.projection = d3.geoAlbersUsa();
     vis.geoPath = d3.geoPath().projection(vis.projection);
 
     vis.colourScale = d3.scaleSymlog()
@@ -61,7 +62,10 @@ class ChoroplethMap {
       .attr('class', 'legend')
       .attr(
         'transform',
-        `translate(${vis.config.legendLeft}, ${vis.config.height - vis.config.legendBottom})`
+        `translate(
+          ${vis.config.width - vis.config.legendRight - vis.config.legendRectWidth},
+          ${vis.config.height - vis.config.legendBottom}
+        )`
       );
 
     vis.legendRect = vis.legend.append('rect')
@@ -82,8 +86,6 @@ class ChoroplethMap {
           .text('- Outages per person')
       });
 
-    // Append reset button
-    vis.generateButtons();
     vis.updateVis();
   }
 
@@ -148,11 +150,20 @@ class ChoroplethMap {
       })
       .on('click', function(event, d) {
         d.properties.selected = !d.properties.selected;
-        if (d.properties.selected) {
-          vis.selectedFips.add(d.properties.fips_code);
-        } else {
-          vis.selectedFips.delete(d.properties.fips_code);
+        let counties = [d];
+
+        if (!vis.selectByCounty) {
+          counties = vis.data.features.filter(f => f.properties.state_abbr === d.properties.state_abbr);
         }
+
+        counties.forEach(c => {
+          c.properties.selected = d.properties.selected;
+          if (c.properties.selected) {
+            vis.selectedFips.add(c.properties.fips_code);
+          } else {
+            vis.selectedFips.delete(c.properties.fips_code);
+          }
+        })
         
         vis.dispatcher.call('selectCounty', event, vis.selectedFips);
       });
@@ -178,56 +189,5 @@ class ChoroplethMap {
         .attr('stop-color', d => d.colour);
 
     vis.legendRect.attr('fill', 'url(#legend-gradient)');
-  }
-
-  generateButtons() {
-    const vis = this;
-
-    const buttons = d3.select('#buttons');
-
-    buttons.append('button')
-      .attr('class', 'button reset-button')
-      .text('Reset Counties')
-      .on('click', (event, d) => {
-        vis.selectedFips = new Set();
-        vis.data.features.forEach(d => d.properties.selected = false);
-
-        vis.dispatcher.call('selectCounty', event, vis.selectedFips);
-      })
-
-    const statesMap = new Map();
-    vis.data.features.forEach(d => {
-      const { state, state_abbr } = d.properties;
-      if (!statesMap.has(state)) statesMap.set(state, state_abbr);
-    });
-
-    const states = Array.from(statesMap, ([state_name, state_abbr]) => ({ state_name, state_abbr }));
-    states.sort((a, b) => a.state_name.localeCompare(b.state_name));
-    states.forEach(s => {
-      s.selected = false;
-    })
-    
-    buttons.selectAll('.state-button')
-        .data(states, d => d.state_abbr)
-      .join('button')
-        .attr('class', d => `button state-button ${d.state_abbr}-button`)
-        .text(d => `${d.state_name} (${d.state_abbr})`)
-        .on('click', (event, d) => {
-          d.selected = !d.selected;
-
-          vis.data.features.forEach(f => {
-            if (f.properties.state_abbr === d.state_abbr) {
-              f.properties.selected = d.selected;
-
-              if (d.selected && !vis.selectedFips.has(f.properties.fips_code)) {
-                vis.selectedFips.add(f.properties.fips_code);
-              } else if (!d.selected && vis.selectedFips.has(f.properties.fips_code)) {
-                vis.selectedFips.delete(f.properties.fips_code);
-              }
-            }
-          });
-
-          vis.dispatcher.call('selectCounty', event, vis.selectedFips);
-        });
   }
 }

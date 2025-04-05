@@ -1,5 +1,5 @@
 let geoData, outageData, barChart, choroplethMap;
-const dispatcher = d3.dispatch('selectCounty');
+const dispatcher = d3.dispatch('selectCounty', 'regionChanged');
 
 Promise.all([
   d3.json("../data/geometry_data.geojson"),
@@ -81,6 +81,23 @@ Promise.all([
 
     choroplethMap = new ChoroplethMap({ parentElement: "#map" }, geoData, dispatcher);
 
+    // Listen for region selector event
+    d3.selectAll('.segmented-controls input')
+      .on('change', function(event) {
+        const region = d3.select(this).attr('id');
+        dispatcher.call('regionChanged', event, region);
+      });
+
+    d3.select('#reset-button')
+      .on('click', function(event) {
+        choroplethMap.data.features.forEach(d => {
+          d.properties.selected = false;
+        });
+        choroplethMap.selectedFips = new Set();
+        
+        dispatcher.call('selectCounty', event, choroplethMap.selectedFips);
+      })
+
     // ==========================================
     // Cartogram
     // ==========================================
@@ -137,4 +154,8 @@ dispatcher.on('selectCounty', selectedFips => {
 
   barChart.selectedFips = selectedFips;
   barChart.updateVis();
+})
+
+dispatcher.on('regionChanged', region => {
+  choroplethMap.selectByCounty = region === 'county';
 })
