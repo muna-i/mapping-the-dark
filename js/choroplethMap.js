@@ -126,13 +126,18 @@ class ChoroplethMap {
         .data(vis.data.features)
       .join('path')
         .attr('id', d => `fips-${d.properties.fips_code}`)
-        .attr('class', 'county')
+        .attr('class', d => `county state-${d.properties.state_abbr}`)
         .classed('county-selected', d => d.properties.selected)
         .attr('d', vis.geoPath)
         .attr('fill', d => vis.colourScale(vis.colourValue(d)));
 
     countyPath
-      .on('mousemove', (event, d) => {
+      .on('mousemove', function(event, d) {
+        d3.select(this).classed('county-hover', true);
+        if (!vis.selectByCounty) {
+          d3.selectAll(`.state-${d.properties.state_abbr}`).classed('county-hover', true);
+        }
+
         const outages = `<strong>${d.properties.sum_outage_count}</strong> outages`;
         const population = `<strong>${d.properties.pop_2023}</strong> people`;
         
@@ -145,7 +150,12 @@ class ChoroplethMap {
             <div>${outages}</div>
             <div>${population}</div>`)
       })
-      .on('mouseleave', () => {
+      .on('mouseleave', function(event, d) {
+        d3.select(this).classed('county-hover', false);
+        if (!vis.selectByCounty) {
+          d3.selectAll(`.state-${d.properties.state_abbr}`).classed('county-hover', false);
+        }
+
         d3.select('#tooltip').style('display', 'none');
       })
       .on('click', function(event, d) {

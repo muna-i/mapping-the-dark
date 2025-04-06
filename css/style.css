@@ -143,19 +143,14 @@ body {
     transition: stroke 0.2s ease;
     stroke: black;
     stroke-opacity: 0;
-}
-
-.county:hover,
-.county-selected,
-.county-selected:hover  {
-    stroke-opacity: 1;
-}
-
-.county:hover {
-    stroke: #909090;
     cursor: pointer;
 }
 
-.county-selected:hover  {
-    stroke: black;
+.county-hover,
+.county-selected  {
+    stroke-opacity: 1;
+}
+
+.county-hover {
+    stroke: #909090;
 }
