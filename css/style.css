@@ -8,6 +8,15 @@ body {
     width: 1250px;
 }
 
+.map-title {
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  margin-top: 1rem;
+  color: #1a1a1a;
+}
+
 .segmented-control-container {
   display: flex;
   align-items: center;
@@ -163,3 +172,4 @@ body {
 .county-hover {
     stroke: #909090;
 }
+

@@ -1,5 +1,5 @@
-let geoData, outageData, timeline, choroplethMap;
-const dispatcher = d3.dispatch('selectCounty', 'regionChanged');
+let geoData, outageData, timeline, choroplethMap, selectedStartDate, selectedEndDate;
+const dispatcher = d3.dispatch('selectCounty', 'regionChanged', 'timeRangeChanged');
 
 Promise.all([
     d3.json("../data/geometry_data.geojson"),
@@ -7,105 +7,105 @@ Promise.all([
     d3.csv("data/cartogram_avg_outage.csv"),
     d3.csv("../data/pops_2019_2023_county.csv"),
 ])
-  .then((data) => {
-    geoData = data[0];
-    outageData = data[1];
-    const cartogramData = data[2];
-    const popData = data[3];
+    .then((data) => {
+        geoData = data[0];
+        outageData = data[1];
+        const cartogramData = data[2];
+        const popData = data[3];
 
-    // ==========================================
-    // Time line
-    // ==========================================
-    outageData.forEach((d) => {
-      d.fips_code = +d.fips_code;
-      d.year = +d.year;
-      d.month = +d.month;
-      d.outage_count = +d.outage_count;
-    });
-    
-    // Collect outage data by fips_code
-    let outageMap = {};
-    outageData.forEach((d) => {
-      if (d.fips_code in outageMap === false) {
-        outageMap[d.fips_code] = [];
-      }
-
-      outageMap[d.fips_code].push({
-        date: `${d.year}-${String(d.month).padStart(2, "0")}`,
-        outage_count: +d.outage_count,
-        total_customers_out: +d.total_customers_out,
-      });
-    });
-
-    const mapContainerWidth = document.querySelector("#map").getBoundingClientRect().width;
-    timeline = new TimeLine({ parentElement: "#chart", containerWidth: mapContainerWidth }, outageData, dispatcher);
-    timeline.updateVis();
-
-    // ==========================================
-    // Choropleth Map
-    // ==========================================
-    const popLookup = new Map(popData.map(d => {
-      return [+d.fips_code, {
-        pop_2019: +d.pop_2019,
-        pop_2020: +d.pop_2020,
-        pop_2021: +d.pop_2021,
-        pop_2022: +d.pop_2022,
-        pop_2023: +d.pop_2023,
-        state_abbr: d.state_abbr
-      }]
-    }));
-
-    // Filter Puerto Rico
-    const features = geoData.features.filter(
-      (d) => d.properties.state !== "Puerto Rico"
-    );
-
-    features.forEach((d) => {
-      d.properties.fips_code = +d.properties.fips_code;
-      d.properties.selected = false;
-
-      const outage_data = outageMap[d.properties.fips_code];
-      d.properties.outage_data = outage_data;
-      
-      d.properties.sum_outage_count = outage_data.reduce((acc, d) => {
-        return d ? acc + d.outage_count : acc;
-      }, 0);
-      d.properties.sum_total_customers_out = outage_data.reduce((acc, d) => {
-        return d ? acc + d.total_customers_out : acc;
-      }, 0);
-
-      const pops = popLookup.get(d.properties.fips_code);
-      Object.assign(d.properties, pops);
-    });
-
-    geoData.features = features;
-
-    choroplethMap = new ChoroplethMap({ parentElement: "#map" }, geoData, dispatcher);
-
-    // Listen for region selector event
-    d3.selectAll('.segmented-controls input')
-      .on('change', function(event) {
-        const region = d3.select(this).attr('id');
-        dispatcher.call('regionChanged', event, region);
-      });
-
-    d3.select('#reset-button')
-      .on('click', function(event) {
-        choroplethMap.data.features.forEach(d => {
-          d.properties.selected = false;
+        // ==========================================
+        // Time line
+        // ==========================================
+        outageData.forEach((d) => {
+            d.fips_code = +d.fips_code;
+            d.year = +d.year;
+            d.month = +d.month;
+            d.outage_count = +d.outage_count;
         });
-        choroplethMap.selectedFips = new Set();
-        
-        dispatcher.call('selectCounty', event, choroplethMap.selectedFips);
-      })
 
-    // ==========================================
-    // Cartogram
-    // ==========================================
-    // prepare cartogram + piechart data:
-    cartogramData.forEach((d) => {
-      d.x = +d.x;
-      d.y = +d.y - 1;
+        // Collect outage data by fips_code
+        let outageMap = {};
+        outageData.forEach((d) => {
+            if (d.fips_code in outageMap === false) {
+                outageMap[d.fips_code] = [];
+            }
+
+            outageMap[d.fips_code].push({
+                date: `${d.year}-${String(d.month).padStart(2, "0")}`,
+                outage_count: +d.outage_count,
+                total_customers_out: +d.total_customers_out,
+            });
+        });
+
+        const mapContainerWidth = document.querySelector("#map").getBoundingClientRect().width;
+        timeline = new TimeLine({ parentElement: "#chart", containerWidth: mapContainerWidth }, outageData, dispatcher);
+        timeline.updateVis();
+
+        // ==========================================
+        // Choropleth Map
+        // ==========================================
+        const popLookup = new Map(popData.map(d => {
+            return [+d.fips_code, {
+                pop_2019: +d.pop_2019,
+                pop_2020: +d.pop_2020,
+                pop_2021: +d.pop_2021,
+                pop_2022: +d.pop_2022,
+                pop_2023: +d.pop_2023,
+                state_abbr: d.state_abbr
+            }]
+        }));
+
+        // Filter Puerto Rico
+        const features = geoData.features.filter(
+            (d) => d.properties.state !== "Puerto Rico"
+        );
+
+        features.forEach((d) => {
+            d.properties.fips_code = +d.properties.fips_code;
+            d.properties.selected = false;
+
+            const outage_data = outageMap[d.properties.fips_code];
+            d.properties.outage_data = outage_data;
+
+            d.properties.sum_outage_count = outage_data.reduce((acc, d) => {
+                return d ? acc + d.outage_count : acc;
+            }, 0);
+            d.properties.sum_total_customers_out = outage_data.reduce((acc, d) => {
+                return d ? acc + d.total_customers_out : acc;
+            }, 0);
+
+            const pops = popLookup.get(d.properties.fips_code);
+            Object.assign(d.properties, pops);
+        });
+
+        geoData.features = features;
+
+        choroplethMap = new ChoroplethMap({ parentElement: "#map" }, geoData, dispatcher);
+
+        // Listen for region selector event
+        d3.selectAll('.segmented-controls input')
+            .on('change', function (event) {
+                const region = d3.select(this).attr('id');
+                dispatcher.call('regionChanged', event, region);
+            });
+
+        d3.select('#reset-button')
+            .on('click', function (event) {
+                choroplethMap.data.features.forEach(d => {
+                    d.properties.selected = false;
+                });
+                choroplethMap.selectedFips = new Set();
+
+                dispatcher.call('selectCounty', event, choroplethMap.selectedFips);
+            })
+
+        // ==========================================
+        // Cartogram
+        // ==========================================
+        // prepare cartogram + piechart data:
+        cartogramData.forEach((d) => {
+            d.x = +d.x;
+            d.y = +d.y - 1;
 
             d.total = +d.total;
             d.affected = +d["average_customers_out"];
@@ -125,12 +125,12 @@ Promise.all([
 
             // keep pieData in this order: other, indian, hawaiin, asinan, mixed, black
             d.pieData = [
-              { value: d.other, race: "Other" },
-              { value: d.indian, race: "American Indian/Alaska Native" },
-              { value: d.hawaiin, race: "Native Hawaiin/Other Pacific Islander" },
-              { value: d.asian, race: "Asian" },
-              { value: d.mixed, race: "Mixed Race" },
-              { value: d.black, race: "Black/African American" },
+                { value: d.other, race: "Other" },
+                { value: d.indian, race: "American Indian/Alaska Native" },
+                { value: d.hawaiin, race: "Native Hawaiin/Other Pacific Islander" },
+                { value: d.asian, race: "Asian" },
+                { value: d.mixed, race: "Mixed Race" },
+                { value: d.black, race: "Black/African American" },
             ];
         });
 
@@ -151,12 +151,30 @@ Promise.all([
     .catch((e) => console.error(e));
 
 dispatcher.on('selectCounty', selectedFips => {
-  choroplethMap.updateVis();
+    choroplethMap.updateVis();
 
-  timeline.selectedFips = selectedFips;
-  timeline.updateVis();
+    timeline.selectedFips = selectedFips;
+    timeline.updateVis();
 })
 
 dispatcher.on('regionChanged', region => {
-  choroplethMap.selectByCounty = region === 'county';
+    choroplethMap.selectByCounty = region === 'county';
 })
+
+
+
+dispatcher.on('timeRangeChanged.main', ({ startDate, endDate }) => {
+    selectedStartDate = startDate;
+    selectedEndDate = endDate;
+
+    const title = d3.select("#map-title");
+
+    if (!startDate || !endDate) {
+        title.text("Outages per person (2019 – 2023)");
+    } else {
+        const formatter = d3.timeFormat("%b %Y");
+        title.text(`Outages per person (${formatter(startDate)} – ${formatter(endDate)})`);
+    }
+});
+
+
