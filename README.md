@@ -32,3 +32,6 @@ understand the intersectionality between power outages and their impact on diffe
 communities. By making complex outage data more accessible, this project helps drive
 informed discussions around energy infrastructure and identify imbalances in consistent
 access to energy among various populations.
+
+## Data
+Links to datasets, details on data preprocessing methods, task analysis and a description of each graph are outlined in the final report: [docs/report-final.pdf](docs/report-final.pdf)
